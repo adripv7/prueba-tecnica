@@ -3,14 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\LocalAiUnavailableException;
 use App\Http\Requests\Api\DashboardReportRequest;
 use App\Http\Requests\Api\DashboardReportExportRequest;
+use App\Http\Requests\Api\ReportAssistantRequest;
 use App\Services\DashboardReportService;
+use App\Services\ReportAssistantService;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    public function assistant(
+        ReportAssistantRequest $request,
+        ReportAssistantService $assistant,
+        DashboardReportService $reports,
+    ): JsonResponse {
+        try {
+            return response()->json([
+                'data' => $assistant->answer($request->validated(), $reports),
+            ]);
+        } catch (LocalAiUnavailableException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->errorCode,
+            ], 503);
+        }
+    }
+
     public function dashboard(DashboardReportRequest $request, DashboardReportService $reports): JsonResponse
     {
         return response()->json([

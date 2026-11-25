@@ -16,11 +16,19 @@ class SaleHistoryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $this->requirePermission($request);
+        $user = $request->user();
+        $canViewAll = $user->hasPermissionTo('sales.view_all');
+        abort_unless(
+            $canViewAll || $user->hasPermissionTo('sales.view_own'),
+            403,
+            'No tienes permiso para consultar el historial de ventas.',
+        );
+
         $filters = $request->validate([
             'search' => ['sometimes', 'nullable', 'string', 'max:100'],
             'status' => ['sometimes', 'nullable', 'in:pagada,cancelada'],
             'branch_id' => ['sometimes', 'nullable', 'integer', 'exists:branches,id'],
+            'seller_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'from' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'to' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
@@ -28,6 +36,8 @@ class SaleHistoryController extends Controller
 
         $sales = Sale::query()
             ->with(['branch:id,name', 'user:id,name'])
+            ->when(! $canViewAll, fn (Builder $query) => $query->where('user_id', $user->id))
+            ->when($canViewAll && ($filters['seller_id'] ?? null), fn (Builder $query, int $sellerId) => $query->where('user_id', $sellerId))
             ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
                 $query->where(function (Builder $query) use ($search): void {
                     $query->where('folio', 'like', "%{$search}%")
@@ -48,7 +58,12 @@ class SaleHistoryController extends Controller
 
     public function show(Request $request, Sale $sale): JsonResponse
     {
-        $this->requirePermission($request);
+        $user = $request->user();
+        if (! $user->hasPermissionTo('sales.view_all')) {
+            abort_unless($user->hasPermissionTo('sales.view_own'), 403, 'No tienes permiso para consultar el detalle de ventas.');
+            abort_unless((int) $sale->user_id === (int) $user->id, 404);
+        }
+
         $sale->load([
             'branch:id,name',
             'user:id,name',
@@ -73,11 +88,6 @@ class SaleHistoryController extends Controller
             'message' => 'Venta cancelada correctamente.',
             'sale' => (new SaleResource($cancelledSale))->resolve($request),
         ]);
-    }
-
-    private function requirePermission(Request $request): void
-    {
-        abort_unless($request->user()->hasPermissionTo('sales.view_all'), 403, 'No tienes permiso para consultar todas las ventas.');
     }
 
     private function summary(Sale $sale): array

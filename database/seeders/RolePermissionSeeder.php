@@ -12,6 +12,7 @@ class RolePermissionSeeder extends Seeder
         'catalog.view' => ['Consultar catálogo', 'Consultar sucursales, categorías y productos permitidos.'],
         'sales.create' => ['Registrar ventas', 'Registrar ventas en la sucursal asignada.'],
         'sales.create_any_branch' => ['Vender en cualquier sucursal', 'Registrar ventas en cualquier sucursal.'],
+        'sales.view_own' => ['Consultar ventas propias', 'Consultar el historial y detalle de las ventas propias.'],
         'sales.view_all' => ['Consultar todas las ventas', 'Consultar historial y detalle de ventas.'],
         'sales.cancel' => ['Cancelar ventas', 'Cancelar ventas y devolver existencias.'],
         'reports.view' => ['Consultar reportes', 'Consultar el dashboard y sus agregados.'],
@@ -43,6 +44,7 @@ class RolePermissionSeeder extends Seeder
         $seller->permissions()->sync([
             $permissions['catalog.view']->id,
             $permissions['sales.create']->id,
+            $permissions['sales.view_own']->id,
         ]);
     }
 }

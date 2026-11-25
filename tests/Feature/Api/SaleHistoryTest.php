@@ -17,18 +17,31 @@ class SaleHistoryTest extends TestCase
 {
     use DatabaseTransactions;
 
-    public function test_history_is_admin_only(): void
+    public function test_seller_can_only_view_their_own_history_and_detail(): void
     {
         $branch = Branch::factory()->create();
-        $sale = Sale::factory()->create(['branch_id' => $branch->id]);
-        Sanctum::actingAs(User::factory()->create(['branch_id' => $branch->id]));
+        $seller = User::factory()->create(['role' => 'vendedor', 'branch_id' => $branch->id]);
+        $otherSeller = User::factory()->create(['role' => 'vendedor', 'branch_id' => $branch->id]);
+        $ownSale = Sale::factory()->create([
+            'user_id' => $seller->id,
+            'branch_id' => $branch->id,
+        ]);
+        $otherSale = Sale::factory()->create([
+            'user_id' => $otherSeller->id,
+            'branch_id' => $branch->id,
+        ]);
+        Sanctum::actingAs($seller);
 
-        $this->getJson('/api/sales')->assertForbidden();
-        $this->getJson('/api/sales/'.$sale->id)->assertForbidden();
-        $this->patchJson('/api/sales/'.$sale->id.'/cancel')->assertForbidden();
+        $this->getJson('/api/sales')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $ownSale->id);
+        $this->getJson('/api/sales/'.$ownSale->id)->assertOk();
+        $this->getJson('/api/sales/'.$otherSale->id)->assertNotFound();
+        $this->patchJson('/api/sales/'.$ownSale->id.'/cancel')->assertForbidden();
     }
 
-    public function test_admin_can_filter_sales_by_customer_and_status(): void
+    public function test_admin_can_filter_sales_by_customer_status_and_seller(): void
     {
         $branch = Branch::factory()->create();
         $seller = User::factory()->create(['branch_id' => $branch->id]);
@@ -54,6 +67,11 @@ class SaleHistoryTest extends TestCase
             ->assertJsonPath('data.0.folio', 'VTA-HISTORY-001')
             ->assertJsonPath('data.0.branch.name', $branch->name)
             ->assertJsonPath('data.0.seller.name', $seller->name);
+
+        $this->getJson('/api/sales?seller_id='.$seller->id.'&status=pagada')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $sale->id);
     }
 
     public function test_admin_can_view_sale_detail_without_exposing_cost(): void
