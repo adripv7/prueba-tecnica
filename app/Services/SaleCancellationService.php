@@ -9,9 +9,13 @@ use Illuminate\Support\Facades\DB;
 
 class SaleCancellationService
 {
+    public function __construct(private readonly DashboardReportCache $reportCache)
+    {
+    }
+
     public function cancel(User $actor, Sale $sale, ?string $reason): Sale
     {
-        return DB::transaction(function () use ($actor, $sale, $reason): Sale {
+        $cancelledSale = DB::transaction(function () use ($actor, $sale, $reason): Sale {
             $sale = Sale::query()
                 ->whereKey($sale->id)
                 ->lockForUpdate()
@@ -52,5 +56,9 @@ class SaleCancellationService
                 'items.product:id,sku,name',
             ]);
         }, attempts: 3);
+
+        $this->reportCache->invalidate();
+
+        return $cancelledSale;
     }
 }

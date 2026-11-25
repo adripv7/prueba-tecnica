@@ -11,6 +11,10 @@ use Illuminate\Database\Eloquent\Builder;
 
 class DashboardReportService
 {
+    public function __construct(private readonly DashboardReportCache $cache)
+    {
+    }
+
     private const MONTH_LABELS = [
         1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr', 5 => 'May', 6 => 'Jun',
         7 => 'Jul', 8 => 'Ago', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic',
@@ -20,10 +24,16 @@ class DashboardReportService
     {
         $to = CarbonImmutable::parse($filters['to'] ?? now()->toDateString())->startOfDay();
         $from = CarbonImmutable::parse($filters['from'] ?? $to->subDays(29)->toDateString())->startOfDay();
+        $branchId = isset($filters['branch_id']) ? (int) $filters['branch_id'] : null;
+
+        return $this->cache->remember($from, $to, $branchId, fn (): array => $this->buildDashboard($from, $to, $branchId));
+    }
+
+    private function buildDashboard(CarbonImmutable $from, CarbonImmutable $to, ?int $branchId): array
+    {
         $until = $to->addDay();
         $periodDays = (int) $from->diffInDays($until);
         $previousFrom = $from->subDays($periodDays);
-        $branchId = isset($filters['branch_id']) ? (int) $filters['branch_id'] : null;
 
         $current = $this->salesSummary($from, $until, $branchId);
         $previous = $this->salesSummary($previousFrom, $from, $branchId);

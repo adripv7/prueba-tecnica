@@ -12,6 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class SaleService
 {
+    public function __construct(private readonly DashboardReportCache $reportCache)
+    {
+    }
+
     public function register(User $user, array $data): Sale
     {
         $branchId = (int) $data['branch_id'];
@@ -22,7 +26,7 @@ class SaleService
             'No tienes permiso para vender en esa sucursal.',
         );
 
-        return DB::transaction(function () use ($user, $data, $branchId): Sale {
+        $sale = DB::transaction(function () use ($user, $data, $branchId): Sale {
             $lines = $data['items'];
             $productIds = collect($lines)
                 ->pluck('product_id')
@@ -122,6 +126,10 @@ class SaleService
                 'items.product:id,sku,name',
             ]);
         }, attempts: 3);
+
+        $this->reportCache->invalidate();
+
+        return $sale;
     }
 
     private function toCents(string $amount): int

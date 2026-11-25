@@ -47,11 +47,15 @@ Todas las rutas protegidas requieren `Authorization: Bearer <token>`. El login y
 
 La exportación requiere `section`: `sales_by_month`, `top_products`, `seller_ranking`, `branch_category_matrix` o `gross_margin_by_category`. Para productos también requiere `top_products_by=amount` o `top_products_by=units`. Acepta los mismos filtros opcionales `from`, `to` y `branch_id` del dashboard.
 
-El asistente recibe JSON con `question` (8 a 500 caracteres) y puede recibir `from`, `to` y `branch_id`. Requiere el permiso `reports.view`, responde con `data.answer`, `data.model` y `data.filters`, y permite hasta 5 solicitudes por minuto. Los reportes excluyen ventas canceladas. El alcance incluye KPIs, comparación de periodos, meses, top de productos, ranking agregado de vendedores, sucursales, matriz por categoría y margen. Laravel prepara agregados compactos según el tema de la pregunta; no envía tablas completas, IDs internos, ventas crudas ni datos de clientes. El asistente sí puede nombrar vendedores al comparar métricas agregadas de rendimiento; rechaza domicilio u otros datos privados. Los umbrales y extremos de rendimiento por vendedor se calculan en Laravel; el top de productos proviene de las agregaciones del dashboard y la IA redacta la respuesta con el tema y los filtros correspondientes. Si no hay ventas, o el mes mencionado contradice los filtros, responde con una explicación directa sin inventar cifras. Ningún proveedor genera SQL y Laravel nunca ejecuta SQL generado por IA; las métricas se calculan exclusivamente con los servicios de reportes existentes. El asistente no realiza operaciones del POS ni consulta inventario operativo.
+El asistente recibe JSON con `question` (8 a 500 caracteres) y puede recibir `from`, `to` y `branch_id`. Requiere el permiso `reports.view`, responde con `data.answer`, `data.model` y `data.filters`, y permite hasta 5 solicitudes por minuto. Los reportes excluyen ventas canceladas. Laravel envía al modelo un contexto compacto con todos los agregados del dashboard: KPIs, periodos, productos destacados, ranking de vendedores, sucursales, matriz por categoría y margen. No envía tablas completas, IDs internos, ventas crudas ni datos de clientes. La IA interpreta la pregunta, elige qué métricas usar y redacta la respuesta; Laravel calcula los agregados y conserva un filtro de seguridad para solicitudes de información privada. Los nombres de vendedores pueden aparecer solo al analizar su rendimiento agregado. Ningún proveedor genera SQL y Laravel nunca ejecuta SQL generado por IA; el asistente no realiza operaciones del POS ni consulta inventario operativo.
 
 Para desarrollo local se conserva Ollama: `AI_PROVIDER=ollama`, `OLLAMA_URL=http://127.0.0.1:11434` y `OLLAMA_MODEL=qwen3:4b`. La API local debe estar ejecutándose y el modelo descargado en Ollama. En el hosting de producción configura `AI_PROVIDER=groq`, `GROQ_MODEL=openai/gpt-oss-20b` y `GROQ_API_KEY` como secreto del servicio; nunca guardes la llave en Git ni la compartas con React. El backend solo envía a Groq el contexto agregado necesario. Los límites gratuitos pueden variar por modelo/cuenta; si el proveedor responde 429, la API devuelve un error controlado.
 
 El endpoint de salud de Laravel está disponible en `/up`; `/` devuelve un JSON breve de identificación del API.
+
+## Caché de reportes
+
+El dashboard completo se almacena durante 60 segundos por combinación de fechas y sucursal. El endpoint CSV reutiliza esos mismos agregados. Al registrar o cancelar una venta se cambia la versión de la caché, de modo que la siguiente consulta recalcula las métricas; si el store de caché falla, el API calcula el reporte directamente. `REPORTS_CACHE_TTL` permite ajustar la duración en segundos. En local el store está configurado como `database`; en pruebas se usa `array`.
 
 ## Datos de prueba
 
@@ -74,7 +78,7 @@ Ejecuta la suite con `php artisan test`. Los tests Feature usan transacciones pa
 - `tests/Feature/Api`: pruebas de autenticación, catálogo y ventas.
 - `AI_LOG.md`: bitácora obligatoria de prompts, resultados y correcciones.
 
-El backend invoca la API local de chat de Ollama en `/api/chat` con `think=false`, respuesta JSON estructurada, contexto de 4096 y un máximo de 320 tokens de salida para acomodar respuestas multitema sin perder el formato.
+El backend invoca la API local de chat de Ollama en `/api/chat` con `think=false`, respuesta JSON estructurada, contexto configurable (`OLLAMA_NUM_CTX=8192` por defecto) y un máximo de 320 tokens de salida. Un contexto mayor permite enviar todas las secciones agregadas junto con las instrucciones; puede aumentar el uso de memoria y el tiempo de preprocesamiento del prompt.
 
 ## Roles y permisos
 
