@@ -58,6 +58,27 @@ class AuthTest extends TestCase
             ->assertJsonPath('user.email', 'vendedor@example.test');
     }
 
+    public function test_seeded_admin_can_login_and_access_protected_routes_as_admin(): void
+    {
+        $login = $this->postJson('/api/login', [
+            'email' => 'admin@ventaslite.test',
+            'password' => 'password',
+            'device_name' => 'admin-seed-test',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', 'admin@ventaslite.test')
+            ->assertJsonPath('user.role', 'admin');
+
+        $token = $login->json('access_token');
+        $this->assertNotEmpty($token);
+
+        $this->withToken($token)
+            ->getJson('/api/user')
+            ->assertOk()
+            ->assertJsonPath('user.email', 'admin@ventaslite.test')
+            ->assertJsonPath('user.role', 'admin');
+    }
+
     public function test_logout_revokes_the_current_token(): void
     {
         $user = User::factory()->create([

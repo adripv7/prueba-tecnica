@@ -57,3 +57,13 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Datos iniciales para pruebas locales
+
+Ejecuta `php artisan migrate --seed` para crear el esquema y cargar los datos de prueba. Los seeders son idempotentes: se pueden ejecutar de nuevo sin duplicar catálogos ni usuarios; las ventas de prueba usan folios `SEED-` y se regeneran.
+
+Credenciales:
+
+- Administrador: `admin@ventaslite.test` / `password`
+- Vendedores: `vendedor.sNN.NN@ventaslite.test` / `password` (por ejemplo, `vendedor.s01.01@ventaslite.test`)
+
+Estas credenciales son únicamente para desarrollo y evaluación local.
