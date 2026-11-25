@@ -17,7 +17,7 @@ class SaleService
         $branchId = (int) $data['branch_id'];
 
         abort_unless(
-            $user->role === 'admin' || (int) $user->branch_id === $branchId,
+            $user->hasPermissionTo('sales.create_any_branch') || (int) $user->branch_id === $branchId,
             403,
             'No tienes permiso para vender en esa sucursal.',
         );

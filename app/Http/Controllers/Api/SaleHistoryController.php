@@ -16,7 +16,7 @@ class SaleHistoryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $this->requireAdmin($request);
+        $this->requirePermission($request);
         $filters = $request->validate([
             'search' => ['sometimes', 'nullable', 'string', 'max:100'],
             'status' => ['sometimes', 'nullable', 'in:pagada,cancelada'],
@@ -48,7 +48,7 @@ class SaleHistoryController extends Controller
 
     public function show(Request $request, Sale $sale): JsonResponse
     {
-        $this->requireAdmin($request);
+        $this->requirePermission($request);
         $sale->load([
             'branch:id,name',
             'user:id,name',
@@ -75,9 +75,9 @@ class SaleHistoryController extends Controller
         ]);
     }
 
-    private function requireAdmin(Request $request): void
+    private function requirePermission(Request $request): void
     {
-        abort_unless($request->user()->role === 'admin', 403, 'Esta acción requiere permisos de administrador.');
+        abort_unless($request->user()->hasPermissionTo('sales.view_all'), 403, 'No tienes permiso para consultar todas las ventas.');
     }
 
     private function summary(Sale $sale): array

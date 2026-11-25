@@ -61,4 +61,29 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Branch::class);
     }
+
+    public function roleDefinition(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role', 'slug');
+    }
+
+    public function hasPermissionTo(string $permission): bool
+    {
+        return $this->roleDefinition()
+            ->whereHas('permissions', fn ($query) => $query->where('permissions.slug', $permission))
+            ->exists();
+    }
+
+    public function permissionSlugs(): array
+    {
+        $role = $this->roleDefinition()
+            ->with('permissions:id,slug')
+            ->first();
+
+        return $role?->permissions
+            ->sortBy('slug')
+            ->pluck('slug')
+            ->values()
+            ->all() ?? [];
+    }
 }

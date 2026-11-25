@@ -1,69 +1,75 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# VentasLite API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Backend REST para el sistema VentasLite, desarrollado con Laravel 12, Eloquent ORM y Laravel Sanctum. El frontend React se mantiene separado.
 
-## About Laravel
+## Requisitos
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2 o superior con las extensiones requeridas por Laravel y PDO MySQL.
+- Composer.
+- MySQL.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Instalación local
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. Copia `.env.example` a `.env` y configura la conexión MySQL.
+2. Instala las dependencias PHP con `composer install`.
+3. Genera la llave de aplicación con `php artisan key:generate`.
+4. Aplica migraciones y carga los datos de prueba con `php artisan migrate --seed`.
+5. Inicia el servidor API con `php artisan serve`.
 
-## Learning Laravel
+El proyecto no necesita Node.js, npm, Vite ni Blade para servir el API. Conserva `routes/web.php` únicamente para responder una comprobación JSON en `/`.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Credenciales locales de prueba
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- Administrador: `admin@ventaslite.test` / `password`.
+- Vendedores: `vendedor.sNN.NN@ventaslite.test` / `password` (ejemplo: `vendedor.s01.01@ventaslite.test`).
 
-## Laravel Sponsors
+Estas credenciales son solo para desarrollo y evaluación local.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Rutas principales
 
-### Premium Partners
+Todas las rutas protegidas requieren `Authorization: Bearer <token>`. El login y `GET /api/user` incluyen el slug del rol y la lista de permisos asignados.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Método | Ruta | Uso |
+| --- | --- | --- |
+| `POST` | `/api/login` | Iniciar sesión y obtener token Sanctum |
+| `GET` | `/api/user` | Consultar usuario autenticado |
+| `POST` | `/api/logout` | Revocar token actual |
+| `GET` | `/api/branches` | Listar sucursales accesibles |
+| `GET` | `/api/categories` | Listar categorías |
+| `GET` | `/api/products?branch_id=1` | Buscar productos activos e inventario por sucursal |
+| `POST` | `/api/sales` | Registrar venta y descontar existencias |
+| `GET` | `/api/sales` | Historial administrativo con filtros y paginación |
+| `GET` | `/api/sales/{sale}` | Detalle administrativo de venta |
+| `PATCH` | `/api/sales/{sale}/cancel` | Cancelar venta y reponer inventario |
+| `GET` | `/api/reports/dashboard` | Resumen y agregados administrativos del dashboard |
+| `GET` | `/api/reports/dashboard/export?section=...` | Descargar CSV de una sección de reportes |
 
-## Contributing
+La exportación requiere `section`: `sales_by_month`, `top_products`, `seller_ranking`, `branch_category_matrix` o `gross_margin_by_category`. Para productos también requiere `top_products_by=amount` o `top_products_by=units`. Acepta los mismos filtros opcionales `from`, `to` y `branch_id` del dashboard.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+El endpoint de salud de Laravel está disponible en `/up`; `/` devuelve un JSON breve de identificación del API.
 
-## Code of Conduct
+## Datos de prueba
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Los seeders usan Faker con locale `es_MX` y datos locales definidos en código. Ejecutar de nuevo `php artisan db:seed` actualiza los catálogos y usuarios; las ventas con folio `SEED-` se regeneran.
 
-## Security Vulnerabilities
+## Pruebas
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Ejecuta la suite con `php artisan test`. Los tests Feature usan transacciones para revertir sus registros.
 
-## License
+## Estructura
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# Datos iniciales para pruebas locales
+- `app/Http/Controllers/Api`: controladores HTTP del API.
+- `app/Http/Requests/Api`: validaciones de entrada.
+- `app/Http/Resources/Api`: formato de respuestas JSON.
+- `app/Models`: modelos y relaciones Eloquent.
+- `app/Services`: lógica de ventas, cancelaciones y agregados del dashboard.
+- `database/migrations`: esquema, claves foráneas e índices.
+- `database/seeders` y `database/factories`: datos iniciales para pruebas.
+- `routes/api.php`: endpoints REST.
+- `tests/Feature/Api`: pruebas de autenticación, catálogo y ventas.
 
-Ejecuta `php artisan migrate --seed` para crear el esquema y cargar los datos de prueba. Los seeders son idempotentes: se pueden ejecutar de nuevo sin duplicar catálogos ni usuarios; las ventas de prueba usan folios `SEED-` y se regeneran.
+## Roles y permisos
 
-Credenciales:
+Los roles disponibles inicialmente son `admin` y `vendedor`; cada usuario conserva su slug en `users.role`, con llave foránea a `roles.slug`. Los permisos se relacionan con roles mediante `permission_role`. El seeder asigna el conjunto administrativo al admin y permisos de catálogo y venta al vendedor. Las reglas de sucursal siguen limitando a cada vendedor a su sucursal.
 
-- Administrador: `admin@ventaslite.test` / `password`
-- Vendedores: `vendedor.sNN.NN@ventaslite.test` / `password` (por ejemplo, `vendedor.s01.01@ventaslite.test`)
-
-Estas credenciales son únicamente para desarrollo y evaluación local.
+Después de aplicar migraciones, los permisos pueden volver a sincronizarse sin duplicados con `php artisan db:seed --class=RolePermissionSeeder`. Las comprobaciones del API usan permisos, no comparaciones directas del slug de rol.

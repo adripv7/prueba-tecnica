@@ -18,7 +18,11 @@ class CatalogController extends Controller
         $user = $request->user();
         $branches = Branch::query();
 
-        if ($user->role !== 'admin') {
+        if (! $user->hasPermissionTo('catalog.view')) {
+            return response()->json(['message' => 'No tienes permiso para consultar el catálogo.'], 403);
+        }
+
+        if (! $user->hasPermissionTo('inventory.view_all_branches')) {
             if (! $user->branch_id) {
                 return response()->json([
                     'message' => 'El usuario no tiene una sucursal asignada.',
@@ -35,8 +39,10 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function categories(): JsonResponse
+    public function categories(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermissionTo('catalog.view'), 403, 'No tienes permiso para consultar el catálogo.');
+
         return response()->json([
             'data' => Category::query()
                 ->orderBy('name')
@@ -54,7 +60,9 @@ class CatalogController extends Controller
         ]);
 
         $user = $request->user();
-        if ($user->role !== 'admin' && (int) $user->branch_id !== (int) $filters['branch_id']) {
+        abort_unless($user->hasPermissionTo('catalog.view'), 403, 'No tienes permiso para consultar el catálogo.');
+
+        if (! $user->hasPermissionTo('inventory.view_all_branches') && (int) $user->branch_id !== (int) $filters['branch_id']) {
             return response()->json([
                 'message' => 'No tienes acceso al inventario de esa sucursal.',
             ], 403);
