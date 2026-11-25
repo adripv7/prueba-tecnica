@@ -1,0 +1,32 @@
+/vendor/
+/node_modules/
+/public/build/
+/public/hot
+/public/storage
+/storage/*.key
+/storage/logs/*.log
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/bootstrap/cache/*.php
+/.phpunit.cache/
+/.phpunit.result.cache
+/database/*.sqlite
+/database/*.sqlite-*
+
+# Nunca versionar la configuración real ni variantes locales/por ambiente.
+/.env
+/.env.*
+**/.env
+**/.env.*
+
+# Único archivo de entorno permitido: plantilla sin secretos.
+!/.env.example
+!**/.env.example
+
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~

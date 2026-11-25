@@ -14,6 +14,8 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertOk()
+            ->assertJsonPath('application', 'VentasLite API')
+            ->assertJsonPath('status', 'ok');
     }
 }
