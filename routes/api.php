@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/sales/{sale}/cancel', [SaleHistoryController::class, 'cancel'])->name('sales.cancel');
     Route::get('/reports/dashboard/export', [ReportController::class, 'export'])->name('reports.dashboard.export');
     Route::get('/reports/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
+    Route::get('/reports/assistant/status', [ReportController::class, 'assistantStatus'])->name('reports.assistant.status');
     Route::post('/reports/assistant', [ReportController::class, 'assistant'])
         ->middleware('throttle:5,1')
         ->name('reports.assistant');

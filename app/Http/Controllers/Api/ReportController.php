@@ -10,6 +10,7 @@ use App\Http\Requests\Api\ReportAssistantRequest;
 use App\Services\DashboardReportService;
 use App\Services\ReportAssistantService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
@@ -21,7 +22,7 @@ class ReportController extends Controller
     ): JsonResponse {
         try {
             return response()->json([
-                'data' => $assistant->answer($request->validated(), $reports),
+                'data' => $assistant->answer($request->validated(), $reports, $request->user()),
             ]);
         } catch (LocalAiUnavailableException $exception) {
             return response()->json([
@@ -29,6 +30,13 @@ class ReportController extends Controller
                 'code' => $exception->errorCode,
             ], 503);
         }
+    }
+
+    public function assistantStatus(Request $request, ReportAssistantService $assistant): JsonResponse
+    {
+        abort_unless($request->user()?->hasPermissionTo('reports.view'), 403, 'No tienes permiso para consultar el asistente de reportes.');
+
+        return response()->json(['data' => $assistant->status()]);
     }
 
     public function dashboard(DashboardReportRequest $request, DashboardReportService $reports): JsonResponse
