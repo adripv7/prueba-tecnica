@@ -109,6 +109,27 @@ Las rutas API están en `routes/api.php`. Las rutas privadas usan Sanctum y requ
 
 En producción, define `VITE_API_BASE_URL` en Vercel con la URL HTTPS del backend y sufijo `/api`. En el `.env` del backend, incluye el dominio del frontend en `CORS_ALLOWED_ORIGINS`. El API debe permitir los headers de autorización que utiliza Sanctum. El hosting del backend también debe tener PHP, MySQL, Composer, variables de entorno, migraciones y seeders configurados.
 
+### Variables para Railway
+
+Agrega la aplicación Laravel y el servicio MySQL al mismo proyecto y entorno de Railway. En las variables del **servicio Laravel**, referencia las variables que Railway proporciona al servicio MySQL; cambia `MySQL` por el nombre exacto del servicio (el autocompletado de Railway ayuda a elegirlo):
+
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=${{MySQL.MYSQLHOST}}
+DB_PORT=${{MySQL.MYSQLPORT}}
+DB_DATABASE=${{MySQL.MYSQLDATABASE}}
+DB_USERNAME=${{MySQL.MYSQLUSER}}
+DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+```
+
+No fijes manualmente un host `*.railway.internal`: el hostname privado depende del nombre del servicio y solo resuelve dentro del mismo proyecto y entorno. Railway ofrece `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER` y `MYSQLPASSWORD` para conectar servicios a su MySQL privado. Después de modificar las variables, aplica y despliega los cambios.
+
+En el primer despliegue, corre `php artisan migrate --seed --force` cuando la conexión esté lista para crear las tablas y los datos de demostración. En despliegues posteriores basta con `php artisan migrate --force`; evita volver a sembrar ventas en cada despliegue.
+
+El middleware CORS de este proyecto lee `CORS_ALLOWED_ORIGINS`; `FRONTEND_URL` no lo configura. Define ahí el origen HTTPS exacto del frontend publicado, sin `*` ni slash final, por ejemplo `https://tu-frontend.vercel.app`. Mantén `APP_DEBUG=false` y las llaves y contraseñas únicamente como variables secretas de Railway.
+
+Aunque la interfaz vive en React y no se renderizan vistas Blade, conserva `resources/views/.gitkeep`: el comando `php artisan optimize` de Railway ejecuta el caché de vistas y Laravel requiere que exista el directorio para completar esa optimización.
+
 ## Mapa del código
 
 - `routes/api.php`: mapa de URLs y control de acceso por token.

@@ -1,0 +1,1 @@
+# Directory retained because Laravel optimize/view:cache scans resources/views; UI is served by the separate React project.
