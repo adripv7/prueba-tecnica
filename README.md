@@ -50,6 +50,15 @@ Abre la URL que muestre Vite, normalmente `http://localhost:5173`. En desarrollo
 
 Son credenciales de desarrollo; cámbialas o elimínalas antes de publicar un entorno real.
 
+## Demo pública
+
+- Frontend: [VentasLite en Netlify](https://frontend-ventaslite.netlify.app/login).
+- API base: `https://prueba-tecnica-production-cf17e5ac.up.railway.app/api`.
+- Administrador de demostración: `admin@ventaslite.test` / `password`.
+- Vendedor de demostración: `vendedor.s01.01@ventaslite.test` / `password`.
+
+Estas cuentas son únicamente para la prueba técnica y operan sobre datos de demostración.
+
 ## Proveedor de IA
 
 La configuración de ejemplo usa Ollama local (`AI_PROVIDER=ollama`, `OLLAMA_URL=http://127.0.0.1:11434`, `OLLAMA_MODEL=qwen3:4b`). Para habilitarlo, arranca Ollama y descarga el modelo una sola vez:
@@ -126,7 +135,7 @@ No fijes manualmente un host `*.railway.internal`: el hostname privado depende d
 
 En el primer despliegue, corre `php artisan migrate --seed --force` cuando la conexión esté lista para crear las tablas y los datos de demostración. En despliegues posteriores basta con `php artisan migrate --force`; evita volver a sembrar ventas en cada despliegue.
 
-El middleware CORS de este proyecto lee `CORS_ALLOWED_ORIGINS`; `FRONTEND_URL` no lo configura. Define ahí el origen HTTPS exacto del frontend publicado, sin `*` ni slash final, por ejemplo `https://tu-frontend.vercel.app`. Mantén `APP_DEBUG=false` y las llaves y contraseñas únicamente como variables secretas de Railway.
+El middleware CORS de este proyecto lee `CORS_ALLOWED_ORIGINS`; `FRONTEND_URL` no lo configura. Define ahí el origen HTTPS exacto del frontend publicado, sin `*` ni slash final; para la demo actual: `https://frontend-ventaslite.netlify.app`. Mantén `APP_DEBUG=false` y las llaves y contraseñas únicamente como variables secretas de Railway.
 
 Aunque la interfaz vive en React y no se renderizan vistas Blade, conserva `resources/views/.gitkeep`: el comando `php artisan optimize` de Railway ejecuta el caché de vistas y Laravel requiere que exista el directorio para completar esa optimización.
 
