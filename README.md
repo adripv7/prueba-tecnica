@@ -1,94 +1,124 @@
-# VentasLite API
+# VentasLite — Backend
 
-Backend REST para el sistema VentasLite, desarrollado con Laravel 12, Eloquent ORM y Laravel Sanctum. El frontend React se mantiene separado.
+API REST de VentasLite. Está construido con Laravel 12, PHP, Eloquent ORM, MySQL y Laravel Sanctum. El frontend React vive por separado en `../frontend-ventaslite`.
 
 ## Requisitos
 
-- PHP 8.2 o superior con las extensiones requeridas por Laravel y PDO MySQL.
-- Composer.
-- MySQL.
+- PHP 8.2 o superior y extensiones de Laravel/PDO MySQL.
+- Composer 2.
+- MySQL 8 compatible.
+- Opcional para responder preguntas de reportes en local: Ollama instalado y el modelo configurado descargado.
 
-## Instalación local
+## Preparar y ejecutar el backend
 
-1. Copia `.env.example` a `.env` y configura la conexión MySQL.
-2. Instala las dependencias PHP con `composer install`.
-3. Genera la llave de aplicación con `php artisan key:generate`.
-4. Aplica migraciones y carga los datos de prueba con `php artisan migrate --seed`.
-5. Inicia el servidor API con `php artisan serve`.
+Abre una terminal en esta carpeta (`backend-ventaslite`) y ejecuta:
 
-El proyecto no necesita Node.js, npm, Vite ni Blade para servir el API. Conserva `routes/web.php` únicamente para responder una comprobación JSON en `/`. `.gitignore` excluye `.env`, SQLite local, dependencias, cachés y artefactos de pruebas; solo `.env.example` debe incluirse.
+```bash
+composer install
+copy .env.example .env
+php artisan key:generate
+```
 
-## Credenciales locales de prueba
+Antes de migrar, crea una base MySQL llamada `ventas-lite` (por ejemplo con phpMyAdmin o MySQL Workbench). Revisa el `.env` y configura `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` y `DB_PASSWORD` para que coincidan con tu instalación. Después:
+
+```bash
+php artisan migrate --seed
+php artisan serve
+```
+
+Laravel queda escuchando normalmente en `http://127.0.0.1:8000`. Mantén esta terminal abierta. Para reiniciar el servidor, vuelve a ejecutar `php artisan serve`.
+
+El seeder crea catálogos, usuarios, inventarios y ventas de muestra. Si ya migraste antes, `php artisan migrate --seed` aplica solo migraciones pendientes y ejecuta los seeders configurados.
+
+## Iniciar el sistema completo
+
+El frontend y el backend son proyectos y repositorios independientes. Con el API funcionando, abre otra terminal:
+
+```bash
+cd ../frontend-ventaslite
+npm install
+npm run dev
+```
+
+Abre la URL que muestre Vite, normalmente `http://localhost:5173`. En desarrollo, Vite reenvía `/api` a `http://127.0.0.1:8000`; no hace falta configurar CORS entre esos dos procesos locales. Si Laravel usa otro host o puerto, configura `VITE_PROXY_API_TARGET` en `frontend-ventaslite/.env.local`.
+
+## Usuarios locales
 
 - Administrador: `admin@ventaslite.test` / `password`.
-- Vendedores: `vendedor.sNN.NN@ventaslite.test` / `password` (ejemplo: `vendedor.s01.01@ventaslite.test`).
+- Vendedor de ejemplo: `vendedor.s01.01@ventaslite.test` / `password`.
+- Los demás vendedores siguen el formato `vendedor.sNN.NN@ventaslite.test` y usan `password` en datos semilla.
 
-Estas credenciales son solo para desarrollo y evaluación local.
+Son credenciales de desarrollo; cámbialas o elimínalas antes de publicar un entorno real.
+
+## Proveedor de IA
+
+La configuración de ejemplo usa Ollama local (`AI_PROVIDER=ollama`, `OLLAMA_URL=http://127.0.0.1:11434`, `OLLAMA_MODEL=qwen3:4b`). Para habilitarlo, arranca Ollama y descarga el modelo una sola vez:
+
+```bash
+ollama pull qwen3:4b
+```
+
+Para una prueba puntual con Groq, configura `AI_PROVIDER=groq`, `GROQ_MODEL` y `GROQ_API_KEY` en el `.env` local. En producción, configura la llave como secreto del servicio de hosting. Nunca la pongas en React, en una variable `VITE_*` ni en Git. Groq es un servicio externo: requiere internet y sus cuotas/límites dependen de la cuenta y el modelo.
+
+El asistente de IA solo recibe el resumen agregado de reportes preparado por Laravel; no recibe tablas completas, SQL, ventas crudas ni datos de clientes. Las ventas canceladas se excluyen de todos los reportes. Si el proveedor no responde o se alcanza una cuota, el API devuelve un error controlado y los demás módulos siguen disponibles.
+
+## Pruebas automatizadas
+
+La base y sus migraciones deben estar preparadas antes de correr las pruebas. Las pruebas HTTP se ejecutan con:
+
+```bash
+php artisan test
+```
+
+Para probar un módulo:
+
+```bash
+php artisan test --filter=CatalogTest
+php artisan test --filter=SalesTest
+php artisan test --filter=SaleHistoryTest
+php artisan test --filter=DashboardReportTest
+php artisan test --filter=DashboardReportCacheTest
+php artisan test --filter=ReportAssistantTest
+php artisan test --filter=RolePermissionTest
+```
+
+Las pruebas Feature pasan por rutas, autenticación, validación, controladores y base de datos. Usan `DatabaseTransactions` para revertir los registros de cada prueba; `phpunit.xml` apunta a la base MySQL `ventas-lite` y usa caché en memoria. Mantén migraciones al día. No uses una base compartida con datos que no quieras utilizar en pruebas.
 
 ## Rutas principales
 
-Todas las rutas protegidas requieren `Authorization: Bearer <token>`. El login y `GET /api/user` incluyen el slug del rol y la lista de permisos asignados.
+Las rutas API están en `routes/api.php`. Las rutas privadas usan Sanctum y requieren `Authorization: Bearer <token>`.
 
-| Método | Ruta | Uso |
+| Método | Ruta | Función |
 | --- | --- | --- |
-| `POST` | `/api/login` | Iniciar sesión y obtener token Sanctum |
-| `GET` | `/api/user` | Consultar usuario autenticado |
-| `POST` | `/api/logout` | Revocar token actual |
-| `GET` | `/api/branches` | Listar sucursales accesibles |
-| `GET` | `/api/categories` | Listar categorías |
-| `GET` | `/api/products?branch_id=1` | Buscar productos activos e inventario por sucursal |
-| `POST` | `/api/sales` | Registrar venta y descontar existencias |
-| `GET` | `/api/sales?from=2026-11-01&to=2026-11-25&branch_id=1&seller_id=2&status=pagada` | Historial paginado: admin consulta todo y vendedor solo sus ventas |
-| `GET` | `/api/sales/{sale}` | Detalle: admin consulta todo y vendedor solo su venta |
-| `PATCH` | `/api/sales/{sale}/cancel` | Cancelar venta y reponer inventario |
-| `GET` | `/api/reports/dashboard` | Resumen y agregados administrativos del dashboard |
-| `GET` | `/api/reports/dashboard/export?section=...` | Descargar CSV de una sección de reportes |
-| `POST` | `/api/reports/assistant` | Consultar el asistente de reportes agregados |
+| `POST` | `/api/login` | Inicia sesión y emite token |
+| `GET` | `/api/user` | Devuelve la sesión, rol y permisos |
+| `POST` | `/api/logout` | Revoca el token actual |
+| `GET` | `/api/branches` | Lista sucursales permitidas |
+| `GET` | `/api/categories` | Lista categorías |
+| `GET` | `/api/products` | Busca productos por texto, SKU, categoría y sucursal |
+| `POST` | `/api/sales` | Registra venta y descuenta existencias |
+| `GET` | `/api/sales` | Historial paginado con filtros |
+| `GET` | `/api/sales/{sale}` | Detalle de venta autorizado |
+| `PATCH` | `/api/sales/{sale}/cancel` | Cancela y restituye inventario con auditoría |
+| `GET` | `/api/reports/dashboard` | Resumen y reportes agregados |
+| `GET` | `/api/reports/dashboard/export` | Exporta una sección como CSV |
+| `GET` | `/api/reports/assistant/status` | Estado del proveedor y uso mensual informado |
+| `POST` | `/api/reports/assistant` | Pregunta sobre los reportes y genera resumen ejecutivo |
 
-La exportación requiere `section`: `sales_by_month`, `top_products`, `seller_ranking`, `branch_category_matrix` o `gross_margin_by_category`. Para productos también requiere `top_products_by=amount` o `top_products_by=units`. Acepta los mismos filtros opcionales `from`, `to` y `branch_id` del dashboard.
+## Configuración del frontend y despliegue
 
-El asistente recibe JSON con `question` (8 a 500 caracteres) y puede recibir `from`, `to` y `branch_id`. Requiere el permiso `reports.view`, responde con `data.answer`, `data.model` y `data.filters`, y permite hasta 5 solicitudes por minuto. Los reportes excluyen ventas canceladas. Laravel envía al modelo un contexto compacto con todos los agregados del dashboard: KPIs, periodos, productos destacados, ranking de vendedores, sucursales, matriz por categoría y margen. No envía tablas completas, IDs internos, ventas crudas ni datos de clientes. La IA interpreta la pregunta, elige qué métricas usar y redacta la respuesta; Laravel calcula los agregados y conserva un filtro de seguridad para solicitudes de información privada. Los nombres de vendedores pueden aparecer solo al analizar su rendimiento agregado. Ningún proveedor genera SQL y Laravel nunca ejecuta SQL generado por IA; el asistente no realiza operaciones del POS ni consulta inventario operativo.
+En producción, define `VITE_API_BASE_URL` en Vercel con la URL HTTPS del backend y sufijo `/api`. En el `.env` del backend, incluye el dominio del frontend en `CORS_ALLOWED_ORIGINS`. El API debe permitir los headers de autorización que utiliza Sanctum. El hosting del backend también debe tener PHP, MySQL, Composer, variables de entorno, migraciones y seeders configurados.
 
-Para desarrollo local se conserva Ollama: `AI_PROVIDER=ollama`, `OLLAMA_URL=http://127.0.0.1:11434` y `OLLAMA_MODEL=qwen3:4b`. La API local debe estar ejecutándose y el modelo descargado en Ollama. En el hosting de producción configura `AI_PROVIDER=groq`, `GROQ_MODEL=openai/gpt-oss-20b` y `GROQ_API_KEY` como secreto del servicio; nunca guardes la llave en Git ni la compartas con React. El backend solo envía a Groq el contexto agregado necesario. Los límites gratuitos pueden variar por modelo/cuenta; si el proveedor responde 429, la API devuelve un error controlado.
+## Mapa del código
 
-El endpoint de salud de Laravel está disponible en `/up`; `/` devuelve un JSON breve de identificación del API.
-
-## Caché de reportes
-
-El dashboard completo se almacena durante 60 segundos por combinación de fechas y sucursal. El endpoint CSV reutiliza esos mismos agregados. Al registrar o cancelar una venta se cambia la versión de la caché, de modo que la siguiente consulta recalcula las métricas; si el store de caché falla, el API calcula el reporte directamente. `REPORTS_CACHE_TTL` permite ajustar la duración en segundos. En local el store está configurado como `database`; en pruebas se usa `array`.
-
-## Datos de prueba
-
-Los seeders usan Faker con locale `es_MX`, incluidos SKU únicos por categoría, y datos definidos en código. El catálogo contiene ocho categorías de ferretería alineadas con el boceto. Por decisión del proyecto hay siete sucursales y cuatro vendedores por sucursal (28 vendedores); supera los mínimos del PDF y conserva la instrucción inicial del usuario. Ejecutar de nuevo `php artisan db:seed` actualiza catálogos, usuarios e inventarios; las ventas con folio `SEED-` se regeneran. El stock operativo por sucursal se toma de `inventories.stock`; `products.stock` se conserva por compatibilidad con los campos mínimos del enunciado.
-
-## Pruebas
-
-Ejecuta la suite con `php artisan test`. Los tests Feature usan transacciones para revertir sus registros.
-
-## Estructura
-
-- `app/Http/Controllers/Api`: controladores HTTP del API.
-- `app/Http/Requests/Api`: validaciones de entrada.
-- `app/Http/Resources/Api`: formato de respuestas JSON.
-- `app/Models`: modelos y relaciones Eloquent.
-- `app/Services`: lógica de ventas, cancelaciones y agregados del dashboard.
-- `database/migrations`: esquema, claves foráneas e índices.
-- `database/seeders` y `database/factories`: datos iniciales para pruebas.
-- `routes/api.php`: endpoints REST.
-- `tests/Feature/Api`: pruebas de autenticación, catálogo y ventas.
-- `AI_LOG.md`: bitácora obligatoria de prompts, resultados y correcciones.
-
-El backend invoca la API local de chat de Ollama en `/api/chat` con `think=false`, respuesta JSON estructurada, contexto configurable (`OLLAMA_NUM_CTX=8192` por defecto) y un máximo de 320 tokens de salida. Un contexto mayor permite enviar todas las secciones agregadas junto con las instrucciones; puede aumentar el uso de memoria y el tiempo de preprocesamiento del prompt.
-
-## Roles y permisos
-
-Los roles disponibles inicialmente son `admin` y `vendedor`; cada usuario conserva su slug en `users.role`, con llave foránea a `roles.slug`. Los permisos se relacionan con roles mediante `permission_role`. El admin tiene `sales.view_all`; el vendedor tiene `sales.view_own`, que limita historial y detalle a ventas donde él es el vendedor. El vendedor no puede cancelar. Las reglas de sucursal limitan su catálogo y el registro de ventas a su sucursal.
-
-Después de aplicar migraciones, los permisos pueden volver a sincronizarse sin duplicados con `php artisan db:seed --class=RolePermissionSeeder`. Las comprobaciones del API usan permisos, no comparaciones directas del slug de rol.
-
-## Decisiones y estado de entrega
-
-- El prototipo compartido muestra seis sucursales; el seeder conserva siete y cuatro vendedores por sucursal, como se pidió durante el desarrollo. La séptima sucursal es Tijuana.
-- Las categorías y productos semilla se alinean con la distribuidora de herramientas del prototipo. Faker genera variantes/modelos y SKU únicos reproducibles; no se importa un catálogo externo.
-- El backend sigue local. URL de despliegue e instrucciones específicas del proveedor y CORS para el dominio React se completarán al elegir hosting y levantar el frontend.
-- Las capturas finales de escritorio/celular y el video se agregan después de terminar React. Las imágenes compartidas durante el diseño no sustituyen los entregables guardados en el repositorio.
+- `routes/api.php`: mapa de URLs y control de acceso por token.
+- `app/Http/Controllers/Api`: reciben la petición HTTP y producen JSON/CSV.
+- `app/Http/Requests/Api`: validan entradas antes de la lógica de negocio.
+- `app/Http/Resources/Api`: definen la forma pública de las respuestas.
+- `app/Models`: modelos Eloquent y relaciones entre tablas.
+- `app/Services`: reglas de ventas, reportes, caché y asistente IA.
+- `database/migrations`: tablas, llaves foráneas e índices.
+- `database/factories` y `database/seeders`: datos de muestra repetibles.
+- `tests/Feature/Api`: pruebas del comportamiento de los endpoints.
+- `docs/`: decisiones técnicas, requerimientos y registro de correcciones.
+- `AI_LOG.md`: bitácora de uso de IA relacionada con el proyecto.
